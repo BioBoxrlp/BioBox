@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materialien – Biologie</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f6f5f0;
+            --card: #ffffff;
+            --accent: #2d6a4f;
+            --accent-light: #d8f3dc;
+            --text: #1b1b1b;
+            --text-muted: #6b6b6b;
+            --border: #e0ddd5;
+            --shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding: 2rem 1rem;
+        }
+
+        header .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2rem;
+            font-weight: 400;
+            color: var(--accent);
+            margin-bottom: 0.4rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* ========================================
+           HIER KANNST DU KATEGORIEN ANPASSEN
+           Jede <section class="category"> ist eine Gruppe.
+           ======================================== */
+
+        .category {
+            margin-bottom: 2rem;
+        }
+
+        .category-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.15rem;
+            color: var(--accent);
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--accent-light);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .file-list {
+            list-style: none;
+        }
+
+        .file-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        .file-list a {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .file-list a:hover {
+            border-color: var(--accent);
+            background: var(--accent-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(45,106,79,0.12);
+        }
+
+        .file-list a::before {
+            content: "📄";
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .file-list .description {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 500px) {
+            h1 { font-size: 1.5rem; }
+            body { padding: 1rem 0.75rem; }
+            .file-list a { padding: 0.75rem; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <header>
+            <div class="icon">🔬</div>
+            <h1>Biologie – Materialien</h1>
+            <p>Klicke auf ein Thema, um es zu öffnen</p>
+        </header>
+
+        <!-- ============================================
+             ANLEITUNG ZUM BEARBEITEN:
+
+             1. Ändere den Titel oben (zwischen <h1>...</h1>)
+             2. Passe die Kategorien an (z.B. "Klasse 10", "MSS 12")
+             3. Für jede HTML-Datei: kopiere einen <li>-Block
+                und ändere den href="..." auf deinen Dateinamen
+             4. Lade diese Datei + alle HTML-Dateien auf GitHub hoch
+
+             ============================================ -->
+
+        <!-- KATEGORIE 1 -->
+        <section class="category">
+            <h2 class="category-title">📗 Klasse 10 – Genetik</h2>
+            <ul class="file-list">
+                <li>
+                    <a href="dna-modell.html">
+                        DNA-Modell
+                        <span class="description">Interaktives 3D-Modell der DNA-Doppelhelix</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="mitose-quiz.html">
+                        Mitose-Quiz
+                        <span class="description">Teste dein Wissen zur Zellteilung</span>
+                    </a>
+                </li>
+                <!-- Weitere Dateien hier einfügen: 
+                <li>
+                    <a href="DATEINAME.html">
+                        TITEL
+                        <span class="description">KURZE BESCHREIBUNG</span>
+                    </a>
+                </li>
+                -->
+            </ul>
+        </section>
+
+        <!-- KATEGORIE 2 -->
+        <section class="category">
+            <h2 class="category-title">📘 MSS – Leistungskurs</h2>
+            <ul class="file-list">
+                <li>
+                    <a href="enzymhemmung.html">
+                        Enzymhemmung
+                        <span class="description">Kompetitive und nicht-kompetitive Hemmung</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="bne-projekt.html">
+                        BNE-Projekt
+                        <span class="description">Informationen zum Nachhaltigkeitsprojekt</span>
+                    </a>
+                </li>
+            </ul>
+        </section>
+
+        <!-- KATEGORIE 3 – Kopiere diesen Block für weitere Kategorien -->
+        <section class="category">
+            <h2 class="category-title">📙 NaWi – Klasse 5</h2>
+            <ul class="file-list">
+                <li>
+                    <a href="sonnensystem.html">
+                        Sonnensystem
+                        <span class="description">Übersicht der Planeten</span>
+                    </a>
+                </li>
+            </ul>
+        </section>
+
+        <footer>
+            Erstellt für den Unterricht · 2025/26
+        </footer>
+
+    </div>
+</body>
+</html>
