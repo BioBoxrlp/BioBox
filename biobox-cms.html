@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="de" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioBox – Seitenmanager</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#F0EBE3;--surface:#FFFFFF;--text:#2D2A26;--text2:#6B6560;--border:#E8E4DE;--accent:#7B1FA2;--accent-l:#F3E5F5;--accent-h:#6A1B9A;--green:#4CAF50;--orange:#FF9800;--red:#C62828;--red-l:#FFEBEE;--blue:#1565C0;--blue-l:#E3F2FD;--teal:#00897B;--teal-l:#E0F2F1;--pink:#AD1457;--pink-l:#FCE4EC}
+    html,body{height:100%;margin:0}
+    *{font-family:'DM Sans',sans-serif;box-sizing:border-box}
+    .hf{font-family:'Fraunces',serif}
+    body{background:var(--bg)}
+    .dot-bg{background-image:radial-gradient(circle,rgba(0,0,0,.06) 1px,transparent 1px);background-size:24px 24px}
+    .fade-up{animation:fadeUp .5s cubic-bezier(.16,1,.3,1) forwards}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .pop{animation:pop .4s cubic-bezier(.16,1,.3,1) forwards}
+    @keyframes pop{from{opacity:0;transform:scale(.95) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+    .sb{width:270px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);transition:transform .35s cubic-bezier(.16,1,.3,1);z-index:40;flex-shrink:0}
+    @media(max-width:768px){.sb{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);box-shadow:8px 0 32px rgba(0,0,0,.15)}.sb.open{transform:translateX(0)}}
+    .ptab{padding:.7rem .85rem;border-radius:.75rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.6rem}
+    .ptab:hover{background:#F7F4F0}
+    .ptab.act{background:var(--accent-l);color:var(--accent);font-weight:600}
+    .ptab .pe{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;background:#F7F4F0}
+    .ptab.act .pe{background:var(--accent);color:#fff}
+
+    /* ═══ GRID ROW: stretch children to equal height ═══ */
+    .row-wrap{display:grid;gap:.75rem;margin-bottom:.75rem;align-items:stretch}
+    .editing .row-wrap{position:relative;padding:.35rem;border:2px dashed transparent;border-radius:1.25rem;transition:border-color .2s}
+    .editing .row-wrap:hover{border-color:#D5D0C8}
+    .row-ctrls{display:none;position:absolute;top:-14px;right:8px;gap:.25rem;z-index:6}
+    .editing .row-ctrls{display:flex}
+
+    /* ═══ BLOCKS: fill entire grid cell ═══ */
+    .cblock{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:1rem;
+      padding:1.15rem;
+      transition:all .25s;
+      position:relative;
+      /* STRETCH: fill grid cell completely */
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      /* no overflow hidden – let content breathe */
+    }
+    .cblock>*:last-child{flex:1}
+    .cblock:hover{box-shadow:0 4px 16px rgba(0,0,0,.06)}
+    .editing .cblock{border-style:dashed;cursor:grab}
+    .editing .cblock:active{cursor:grabbing}
+    .cblock.dragging{opacity:.4;transform:scale(.96)}
+    .drag-top{border-top:3px solid var(--accent)!important}
+    .drag-bot{border-bottom:3px solid var(--accent)!important}
+
+    .bctrl{position:absolute;top:.4rem;right:.4rem;display:none;gap:.25rem;z-index:5}
+    .editing .bctrl{display:flex}
+    .bc{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.95);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+    .bc:hover{background:var(--accent-l);border-color:var(--accent)}
+    .bc.del:hover{background:var(--red-l);border-color:var(--red)}
+
+    .btxt{white-space:pre-wrap;line-height:1.7;color:var(--text)}
+    .bimg{flex:1;display:flex;flex-direction:column}
+    .bimg img{width:100%;border-radius:.75rem;display:block;flex:1;object-fit:cover}
+    .bpdf{background:linear-gradient(135deg,#FFF3E0,#FFE0B2);border-radius:.75rem;padding:1.1rem;display:flex;align-items:center;gap:.85rem;text-decoration:none;color:var(--text);transition:all .2s;flex:1}
+    .bpdf:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+    .blnk{background:linear-gradient(135deg,#E8F5E9,#C8E6C9);border-radius:.75rem;padding:1.1rem;display:flex;align-items:center;gap:.85rem;text-decoration:none;color:var(--text);transition:all .2s;flex:1}
+    .blnk:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+    .baudio{background:linear-gradient(135deg,var(--pink-l),#F8BBD0);border-radius:.75rem;padding:1.1rem;flex:1;display:flex;flex-direction:column;justify-content:center}
+    .baudio audio{width:100%;margin-top:.5rem;border-radius:8px}
+    .baudio-label{display:flex;align-items:center;gap:.65rem;margin-bottom:.25rem}
+
+    /* ═══ HTML BLOCK – fully interactive ═══ */
+    .bhtml-wrap{border:1px solid var(--border);border-radius:.75rem;overflow:hidden;width:100%;flex:1;display:flex;flex-direction:column}
+    .bhtml-label{background:var(--blue-l);padding:.5rem .85rem;display:flex;align-items:center;gap:.5rem;font-size:.8rem;font-weight:600;color:var(--blue);flex-shrink:0}
+    .bhtml-frame{width:100%;border:none;display:block;flex:1}
+
+    .biframe-wrap{border:1px solid var(--border);border-radius:.75rem;overflow:hidden;width:100%;flex:1;display:flex;flex-direction:column}
+    .biframe-label{background:var(--teal-l);padding:.5rem .85rem;display:flex;align-items:center;gap:.5rem;font-size:.8rem;font-weight:600;color:var(--teal);flex-shrink:0}
+    .biframe-frame{width:100%;border:none;display:block;flex:1}
+
+    .mo{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+    .mo.act{opacity:1;pointer-events:auto}
+    .mb{background:#fff;border-radius:1.25rem;padding:1.75rem;max-width:640px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2);transform:translateY(20px) scale(.97);transition:transform .35s cubic-bezier(.16,1,.3,1)}
+    .mo.act .mb{transform:translateY(0) scale(1)}
+
+    .fi{width:100%;border:2px solid var(--border);border-radius:.75rem;padding:.6rem .9rem;font-size:.93rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:border-color .2s}
+    .fi:focus{border-color:var(--accent)}
+    .fta{width:100%;border:2px solid var(--border);border-radius:.75rem;padding:.7rem .9rem;font-size:.93rem;font-family:'DM Sans',sans-serif;color:var(--text);resize:vertical;outline:none;min-height:90px;transition:border-color .2s;line-height:1.6}
+    .fta:focus{border-color:var(--accent)}
+    .fcode{font-family:'Courier New',monospace;font-size:.85rem;tab-size:2;min-height:200px}
+
+    .btn{border:none;border-radius:.75rem;padding:.55rem 1.15rem;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.35rem}
+    .ba{background:var(--accent);color:#fff}.ba:hover{background:var(--accent-h)}
+    .bg{background:#F7F4F0;color:var(--text)}.bg:hover{background:var(--border)}
+    .bd{background:var(--red-l);color:var(--red)}.bd:hover{background:#FFCDD2}
+    .brec{background:var(--red);color:#fff;border-radius:50%}.brec:hover{background:#B71C1C}
+    .bstop{background:var(--text);color:#fff;border-radius:50%}.bstop:hover{background:#000}
+
+    .uz{border:2px dashed #D5D0C8;border-radius:.75rem;padding:1.15rem;text-align:center;cursor:pointer;transition:all .25s;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem}
+    .uz:hover,.uz.dov{border-color:var(--accent);background:var(--accent-l)}
+    .uz input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+    .toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:#fff;padding:.7rem 1.4rem;border-radius:.75rem;font-size:.88rem;font-weight:500;z-index:200;transition:transform .4s cubic-bezier(.16,1,.3,1);pointer-events:none}
+    .toast.show{transform:translateX(-50%) translateY(0)}
+    .shake{animation:shake .4s ease}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+
+    .fab{position:fixed;bottom:1.5rem;right:1.5rem;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(123,31,162,.35);transition:all .3s cubic-bezier(.16,1,.3,1);z-index:50}
+    .fab:hover{transform:scale(1.1);box-shadow:0 8px 28px rgba(123,31,162,.45)}
+    .fab.on{background:var(--green)}.fab.on:hover{box-shadow:0 8px 28px rgba(76,175,80,.45)}
+    .mmb{display:none;position:fixed;top:1rem;left:1rem;z-index:45;width:44px;height:44px;border-radius:12px;background:var(--surface);border:1px solid var(--border);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    @media(max-width:768px){.mmb{display:flex}}
+    .sbb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:35}.sbb.act{display:block}
+    .add-row-bar{display:none;gap:.5rem;flex-wrap:wrap;padding:.85rem;background:var(--surface);border:2px dashed var(--border);border-radius:1rem;justify-content:center;margin-top:.5rem}
+    .editing .add-row-bar{display:flex}
+    .empty-p{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 2rem;color:var(--text2)}
+    .pw-w{position:relative}
+    .pw-t{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+    .col-sel{display:flex;gap:.35rem;margin-bottom:.75rem}
+    .col-btn{width:40px;height:32px;border-radius:6px;border:2px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:2px;transition:all .15s;padding:4px}
+    .col-btn:hover,.col-btn.act{border-color:var(--accent);background:var(--accent-l)}
+    .col-btn .col-bar{height:100%;border-radius:2px;background:var(--text2)}
+    .col-btn.act .col-bar{background:var(--accent)}
+    .rec-area{display:flex;flex-direction:column;align-items:center;gap:.75rem;padding:1.25rem;border:2px solid var(--border);border-radius:.75rem;background:#FAFAFA}
+    .rec-timer{font-family:'Courier New',monospace;font-size:1.4rem;font-weight:700;color:var(--text)}
+    .rec-controls{display:flex;gap:.75rem;align-items:center}
+    .type-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem}
+    .type-card{display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:.75rem .5rem;border:2px solid var(--border);border-radius:.75rem;cursor:pointer;transition:all .2s;background:var(--surface)}
+    .type-card:hover{border-color:var(--accent);background:var(--accent-l)}
+    .type-card span{font-size:.78rem;font-weight:600;color:var(--text)}
+    .save-banner{display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:49;background:var(--surface);border:2px solid var(--accent);border-radius:1rem;padding:.5rem .5rem .5rem 1.25rem;box-shadow:0 8px 32px rgba(0,0,0,.12);align-items:center;gap:.75rem}
+    .editing .save-banner{display:flex}
+  </style>
+</head>
+<body class="h-full overflow-hidden">
+<div class="flex h-full">
+  <div id="sbb" class="sbb" onclick="toggleSb()"></div>
+  <aside id="sb" class="sb flex flex-col dot-bg">
+    <div class="p-4 border-b" style="border-color:var(--border)"><h1 class="hf text-xl font-bold" style="color:var(--text)">📚 BioBox</h1><p class="text-xs mt-1" style="color:var(--text2)">Seitenmanager</p></div>
+    <nav id="plist" class="flex-1 overflow-y-auto p-2.5 flex flex-col gap-1"></nav>
+    <div id="sb-acts" class="p-2.5 border-t hidden" style="border-color:var(--border)"><button class="btn ba w-full justify-center" onclick="openPageM()"><i data-lucide="plus" style="width:15px;height:15px"></i> Neue Seite</button></div>
+  </aside>
+  <main id="main" class="flex-1 overflow-y-auto">
+    <div class="max-w-4xl mx-auto px-4 py-8 md:py-12">
+      <header class="mb-8 fade-up"><h2 id="ptitle" class="hf text-3xl md:text-4xl font-bold mb-2" style="color:var(--text)"></h2><p id="pdesc" class="text-base" style="color:var(--text2)"></p></header>
+      <div id="rows-container"></div>
+      <div id="add-row-bar" class="add-row-bar">
+        <button class="btn bg" onclick="addRow('text')"><i data-lucide="type" style="width:15px;height:15px"></i> Text</button>
+        <button class="btn bg" onclick="addRow('image')"><i data-lucide="image" style="width:15px;height:15px"></i> Bild</button>
+        <button class="btn bg" onclick="addRow('pdf')"><i data-lucide="file-text" style="width:15px;height:15px"></i> PDF</button>
+        <button class="btn bg" onclick="addRow('link')"><i data-lucide="link" style="width:15px;height:15px"></i> Link</button>
+        <button class="btn bg" onclick="addRow('audio')"><i data-lucide="mic" style="width:15px;height:15px"></i> Audio</button>
+        <button class="btn bg" onclick="addRow('html')"><i data-lucide="code" style="width:15px;height:15px"></i> HTML</button>
+        <button class="btn bg" onclick="addRow('iframe')"><i data-lucide="globe" style="width:15px;height:15px"></i> iFrame</button>
+      </div>
+      <div id="empty-p" class="empty-p hidden"><div class="w-20 h-20 rounded-full flex items-center justify-center mb-4" style="background:var(--surface)"><i data-lucide="layout" style="width:36px;height:36px;color:var(--text2)"></i></div><p class="text-lg font-medium mb-1">Diese Seite ist noch leer</p><p class="text-sm">Bearbeitungsmodus einschalten, um Inhalte hinzuzufügen</p></div>
+    </div>
+  </main>
+</div>
+<button class="mmb" onclick="toggleSb()"><i data-lucide="menu" style="width:22px;height:22px;color:var(--text)"></i></button>
+<button id="fab" class="fab" onclick="fabClick()" title="Bearbeiten"><i id="fabi" data-lucide="pencil" style="width:24px;height:24px"></i></button>
+<div class="save-banner"><span class="text-sm font-semibold" style="color:var(--text)">Bearbeitung</span><button class="btn ba" onclick="saveAndDownload()" style="padding:.45rem 1rem"><i data-lucide="download" style="width:15px;height:15px"></i> Speichern &amp; Download</button><button class="btn bg" onclick="exitEd()" style="padding:.45rem 1rem"><i data-lucide="check" style="width:15px;height:15px"></i> Fertig</button></div>
+
+<!-- PW -->
+<div id="pwM" class="mo" onclick="if(event.target===this)closePw()"><div class="mb">
+  <div class="flex items-center justify-between mb-5"><h2 class="hf text-2xl font-bold" style="color:var(--text)">🔒 Editor freischalten</h2><button onclick="closePw()" class="bc"><i data-lucide="x" style="width:15px;height:15px;color:var(--text2)"></i></button></div>
+  <p class="mb-3" style="color:var(--text2)">Passwort eingeben:</p>
+  <div class="pw-w mb-3"><input id="pwI" type="password" class="fi" placeholder="Passwort..." onkeydown="if(event.key==='Enter')chkPw()"><button class="pw-t" onclick="togPwV()"><i id="pwE" data-lucide="eye" style="width:18px;height:18px"></i></button></div>
+  <p id="pwErr" class="text-sm mb-3 hidden" style="color:var(--red)">Falsches Passwort!</p>
+  <div class="flex gap-2 justify-end"><button class="btn bg" onclick="closePw()">Abbrechen</button><button class="btn ba" onclick="chkPw()">Entsperren</button></div>
+</div></div>
+
+<!-- Page -->
+<div id="pgM" class="mo" onclick="if(event.target===this)closePgM()"><div class="mb">
+  <div class="flex items-center justify-between mb-5"><h2 id="pgMt" class="hf text-2xl font-bold" style="color:var(--text)">Neue Seite</h2><button onclick="closePgM()" class="bc"><i data-lucide="x" style="width:15px;height:15px;color:var(--text2)"></i></button></div>
+  <div class="mb-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Emoji</label><input id="pgE" class="fi" type="text" maxlength="4" placeholder="📄" style="width:70px;text-align:center;font-size:1.2rem"></div>
+  <div class="mb-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Name</label><input id="pgN" class="fi" type="text" placeholder="z.B. Zellbiologie"></div>
+  <div class="mb-4"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Beschreibung</label><input id="pgD" class="fi" type="text" placeholder="Optional..."></div>
+  <div class="flex gap-2 justify-end"><button class="btn bg" onclick="closePgM()">Abbrechen</button><button class="btn ba" onclick="savePg()">Speichern</button></div>
+</div></div>
+
+<!-- Block -->
+<div id="blM" class="mo" onclick="if(event.target===this)closeBlM()"><div class="mb">
+  <div class="flex items-center justify-between mb-4"><h2 id="blMt" class="hf text-2xl font-bold" style="color:var(--text)">Block</h2><button onclick="closeBlM()" class="bc"><i data-lucide="x" style="width:15px;height:15px;color:var(--text2)"></i></button></div>
+  <div id="bf-text" class="hidden"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Text</label><textarea id="blTxt" class="fta" rows="5" placeholder="Dein Text..."></textarea></div>
+  <div id="bf-image" class="hidden"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Bild hochladen</label><div id="blImgZ" class="uz"><i data-lucide="image-plus" style="width:30px;height:30px;color:#9E9E9E"></i><span style="color:#9E9E9E;font-size:.83rem">Bild hierher ziehen oder klicken</span><input type="file" accept="image/*" onchange="hImgU(event)"></div><div id="blImgP" class="hidden mt-3" style="border-radius:.75rem;overflow:hidden;border:2px solid var(--border)"><img id="blImgPI" src="" style="width:100%;display:block;max-height:220px;object-fit:cover"></div><div class="mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Bildunterschrift</label><input id="blImgC" class="fi" type="text" placeholder="Optional..."></div></div>
+  <div id="bf-pdf" class="hidden"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">PDF hochladen</label><div id="blPdfZ" class="uz"><i data-lucide="file-text" style="width:30px;height:30px;color:#9E9E9E"></i><span style="color:#9E9E9E;font-size:.83rem">PDF ziehen oder klicken</span><input type="file" accept=".pdf,application/pdf" onchange="hPdfU(event)"></div><div id="blPdfI" class="hidden mt-3 p-3 rounded-xl flex items-center gap-2" style="background:#FFF3E0"><i data-lucide="file-text" style="width:18px;height:18px;color:var(--orange)"></i><span id="blPdfN" class="text-sm font-medium"></span></div><div class="mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Anzeigename</label><input id="blPdfL" class="fi" type="text" placeholder="z.B. Arbeitsblatt 3"></div></div>
+  <div id="bf-link" class="hidden"><div class="mb-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">URL</label><input id="blLnkU" class="fi" type="url" placeholder="https://..."></div><div><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Anzeigename</label><input id="blLnkL" class="fi" type="text" placeholder="z.B. Wikipedia – Zellkern"></div></div>
+  <div id="bf-audio" class="hidden"><label class="text-xs font-semibold uppercase tracking-wider mb-2 block" style="color:var(--text2)">Audio aufnehmen oder hochladen</label><div class="rec-area"><div class="rec-timer" id="recTimer">00:00</div><div class="rec-controls"><button id="recStartBtn" class="btn brec" style="width:48px;height:48px;justify-content:center" onclick="startRec()"><i data-lucide="mic" style="width:22px;height:22px"></i></button><button id="recStopBtn" class="btn bstop hidden" style="width:48px;height:48px;justify-content:center" onclick="stopRec()"><i data-lucide="square" style="width:18px;height:18px"></i></button></div><p class="text-xs" style="color:var(--text2)">oder</p><div class="uz" style="padding:.75rem;width:100%"><i data-lucide="upload" style="width:20px;height:20px;color:#9E9E9E"></i><span style="color:#9E9E9E;font-size:.8rem">Audiodatei hochladen</span><input type="file" accept="audio/*" onchange="hAudioFile(event)"></div></div><div id="blAudioP" class="hidden mt-3 p-3 rounded-xl" style="background:var(--pink-l)"><div class="flex items-center gap-2 mb-2"><i data-lucide="music" style="width:16px;height:16px;color:var(--pink)"></i><span id="blAudioN" class="text-sm font-medium"></span></div><audio id="blAudioPrev" controls style="width:100%"></audio></div><div class="mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Titel</label><input id="blAudioL" class="fi" type="text" placeholder="z.B. Erklärung Mitose"></div></div>
+  <div id="bf-html" class="hidden"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">HTML-Code einfügen</label><textarea id="blHtmlCode" class="fta fcode" rows="12" placeholder="Hier den kompletten HTML-Code einfügen..."></textarea><div class="mt-2 mb-2"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Höhe (px)</label><input id="blHtmlH" class="fi" type="number" value="400" min="50" max="3000" style="width:120px"></div><p class="text-xs" style="color:var(--text2)">Interaktive HTML-Seiten (Buttons, Klicks, JavaScript) funktionieren vollständig. Kompletten Code mit &lt;html&gt;, &lt;head&gt;, &lt;body&gt; einfügen.</p></div>
+  <div id="bf-iframe" class="hidden"><div class="mb-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">iFrame URL</label><input id="blIframeU" class="fi" type="url" placeholder="https://www.youtube.com/embed/..."></div><div class="mb-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Höhe (px)</label><input id="blIframeH" class="fi" type="number" value="400" min="100" max="3000" style="width:120px"></div><div><label class="text-xs font-semibold uppercase tracking-wider mb-1 block" style="color:var(--text2)">Titel</label><input id="blIframeL" class="fi" type="text" placeholder="Optional..."></div><p class="text-xs mt-2" style="color:var(--text2)">YouTube, LearningApps, H5P, Padlet, Google Forms…</p></div>
+  <div class="flex gap-2 justify-end mt-5"><button class="btn bg" onclick="closeBlM()">Abbrechen</button><button class="btn ba" onclick="saveBl()">Speichern</button></div>
+</div></div>
+
+<!-- Type Chooser -->
+<div id="tcM" class="mo" onclick="if(event.target===this)closeTcM()"><div class="mb">
+  <div class="flex items-center justify-between mb-4"><h2 class="hf text-2xl font-bold" style="color:var(--text)">Block-Typ wählen</h2><button onclick="closeTcM()" class="bc"><i data-lucide="x" style="width:15px;height:15px;color:var(--text2)"></i></button></div>
+  <div class="type-grid">
+    <div class="type-card" onclick="pickType('text')"><i data-lucide="type" style="width:22px;height:22px;color:var(--accent)"></i><span>Text</span></div>
+    <div class="type-card" onclick="pickType('image')"><i data-lucide="image" style="width:22px;height:22px;color:var(--green)"></i><span>Bild</span></div>
+    <div class="type-card" onclick="pickType('pdf')"><i data-lucide="file-text" style="width:22px;height:22px;color:var(--orange)"></i><span>PDF</span></div>
+    <div class="type-card" onclick="pickType('link')"><i data-lucide="link" style="width:22px;height:22px;color:var(--green)"></i><span>Link</span></div>
+    <div class="type-card" onclick="pickType('audio')"><i data-lucide="mic" style="width:22px;height:22px;color:var(--pink)"></i><span>Audio</span></div>
+    <div class="type-card" onclick="pickType('html')"><i data-lucide="code" style="width:22px;height:22px;color:var(--blue)"></i><span>HTML</span></div>
+    <div class="type-card" onclick="pickType('iframe')"><i data-lucide="globe" style="width:22px;height:22px;color:var(--teal)"></i><span>iFrame</span></div>
+  </div>
+</div></div>
+
+<!-- Layout -->
+<div id="layM" class="mo" onclick="if(event.target===this)closeLayM()"><div class="mb">
+  <div class="flex items-center justify-between mb-4"><h2 class="hf text-2xl font-bold" style="color:var(--text)">Zeilen-Layout</h2><button onclick="closeLayM()" class="bc"><i data-lucide="x" style="width:15px;height:15px;color:var(--text2)"></i></button></div>
+  <p class="mb-3 text-sm" style="color:var(--text2)">Spaltenanzahl:</p>
+  <div class="col-sel" id="layColSel"></div>
+  <div class="flex gap-2 justify-end"><button class="btn bg" onclick="closeLayM()">Abbrechen</button><button class="btn ba" onclick="saveLay()">Anwenden</button></div>
+</div></div>
+
+<!-- Download Modal (mobile fallback) -->
+<div id="dlM" class="mo" onclick="if(event.target===this)closeDlM()"><div class="mb" style="text-align:center">
+  <div class="flex items-center justify-between mb-4"><h2 class="hf text-2xl font-bold" style="color:var(--text)">📥 Datei herunterladen</h2><button onclick="closeDlM()" class="bc"><i data-lucide="x" style="width:15px;height:15px;color:var(--text2)"></i></button></div>
+  <p class="mb-4 text-sm" style="color:var(--text2)">Tippe auf den Button, um die Datei zu speichern. Lade sie danach auf Moodle hoch.</p>
+  <a id="dlLink" href="#" download="biobox.html" class="btn ba" style="font-size:1.1rem;padding:.85rem 2rem;text-decoration:none;display:inline-flex;justify-content:center;width:100%;" onclick="setTimeout(closeDlM,1000)"><i data-lucide="download" style="width:20px;height:20px"></i> biobox.html speichern</a>
+  <p class="mt-4 text-xs" style="color:var(--text2)">Falls der Download nicht startet: Finger lange auf den Button halten → „Link herunterladen" wählen.</p>
+</div></div>
+
+<div id="toast" class="toast"></div>
+
+<!--DATA_EMBED_START-->
+<script id="embedded-data" type="application/json">null</script>
+<!--DATA_EMBED_END-->
+
+<script>
+const PW='BioBoX',LS='biobox_v4';
+let isEd=false,curPg=null,edPgId=null,addBlType=null,edBlId=null,edRowId=null,edColIdx=null;
+let tmpImg=null,tmpPdf=null,tmpPdfN=null,tmpAudio=null,tmpAudioN=null;
+let layRowId=null,layNewCols=null;
+let mediaRec=null,recChunks=[],recInterval=null,recSecs=0;
+const TYPES=['text','image','pdf','link','audio','html','iframe'];
+const TN={text:'Text',image:'Bild',pdf:'PDF',link:'Link',audio:'Audio',html:'HTML-Code',iframe:'iFrame'};
+
+const defData={pages:[{id:'p1',emoji:'🌱',name:'Willkommen',desc:'Startseite',rows:[
+  {id:'r1',cols:1,blocks:[{id:'b1',type:'text',content:'Willkommen auf deiner BioBox!\n\nHier kannst du Seiten anlegen und mit Texten, Bildern, PDFs, Links, Audio, HTML-Code und iFrames füllen.\n\nKlicke den Stift-Button unten rechts, um loszulegen.\n\nNach dem Bearbeiten: „Speichern & Download" klicken und die neue Datei auf Moodle hochladen.'}]}
+]}]};
+
+function loadData(){
+  try{const e=document.getElementById('embedded-data');if(e){const t=e.textContent.trim();if(t&&t!=='null'){const d=JSON.parse(t);if(d&&d.pages)return d}}}catch(e){}
+  try{const s=localStorage.getItem(LS);if(s){const d=JSON.parse(s);if(d&&d.pages)return d}}catch(e){}
+  return JSON.parse(JSON.stringify(defData));
+}
+function saveData(d){try{document.getElementById('embedded-data').textContent=JSON.stringify(d)}catch(e){}try{localStorage.setItem(LS,JSON.stringify(d))}catch(e){}}
+function D(){return loadData()}
+function gid(){return 'i'+Date.now()+'_'+Math.random().toString(36).substr(2,5)}
+function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''}
+
+// ═══ RENDER ═══
+function renderSb(){
+  const d=D(),l=document.getElementById('plist');l.innerHTML='';
+  d.pages.forEach(p=>{const t=document.createElement('div');t.className='ptab'+(p.id===curPg?' act':'');t.onclick=()=>navTo(p.id);
+    t.innerHTML=`<div class="pe">${p.emoji||'📄'}</div><div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">${esc(p.name)}</div></div>${isEd?`<button class="bc" style="width:26px;height:26px" onclick="event.stopPropagation();openEditPgM('${p.id}')"><i data-lucide="settings" style="width:13px;height:13px;color:var(--text2)"></i></button>${d.pages.length>1?`<button class="bc del" style="width:26px;height:26px" onclick="event.stopPropagation();delPg('${p.id}')"><i data-lucide="trash-2" style="width:13px;height:13px;color:var(--red)"></i></button>`:''}`:''}`;
+    l.appendChild(t)});
+  document.getElementById('sb-acts').classList.toggle('hidden',!isEd);lucide.createIcons();
+}
+
+function renderPg(){
+  const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;
+  document.getElementById('ptitle').textContent=(pg.emoji||'')+' '+pg.name;
+  document.getElementById('pdesc').textContent=pg.desc||'';
+  const c=document.getElementById('rows-container');c.innerHTML='';
+  if(!pg.rows||!pg.rows.length){document.getElementById('empty-p').classList.remove('hidden');lucide.createIcons();return}
+  document.getElementById('empty-p').classList.add('hidden');
+
+  pg.rows.forEach((row,ri)=>{
+    const rw=document.createElement('div');rw.className='row-wrap pop';rw.style.animationDelay=(ri*.06)+'s';
+    rw.style.gridTemplateColumns=`repeat(${row.cols||1},1fr)`;rw.dataset.rowId=row.id;
+    if(isEd){rw.draggable=true;rw.addEventListener('dragstart',rDS);rw.addEventListener('dragend',rDE);rw.addEventListener('dragover',rDO);rw.addEventListener('dragleave',rDL);rw.addEventListener('drop',rDR)}
+
+    // Row controls
+    const rcDiv=document.createElement('div');rcDiv.className='row-ctrls';
+    rcDiv.innerHTML=`<button class="bc" onclick="openLayM('${row.id}')"><i data-lucide="columns" style="width:13px;height:13px;color:var(--text2)"></i></button><button class="bc" onclick="addBlToRow('${row.id}')"><i data-lucide="plus" style="width:13px;height:13px;color:var(--text2)"></i></button><button class="bc del" onclick="delRow('${row.id}')"><i data-lucide="trash-2" style="width:13px;height:13px;color:var(--red)"></i></button>`;
+    rw.appendChild(rcDiv);
+
+    for(let ci=0;ci<(row.cols||1);ci++){
+      const bl=row.blocks[ci];
+      if(bl){
+        const el=buildBlockEl(bl,row.id,ci);
+        rw.appendChild(el);
+      } else if(isEd){
+        const ph=document.createElement('div');ph.className='cblock';
+        ph.style.cssText='display:flex;align-items:center;justify-content:center;min-height:80px;border-style:dashed;cursor:pointer';
+        ph.onclick=()=>addBlToRowCol(row.id,ci);
+        ph.innerHTML=`<span style="color:var(--text2);font-size:.85rem"><i data-lucide="plus" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:4px"></i>Block</span>`;
+        rw.appendChild(ph);
+      } else {
+        rw.appendChild(document.createElement('div'));
+      }
+    }
+    c.appendChild(rw);
+  });
+  lucide.createIcons();
+}
+
+function buildBlockEl(bl,rId,ci){
+  const el=document.createElement('div');el.className='cblock';
+
+  // Controls
+  const ctrl=document.createElement('div');ctrl.className='bctrl';
+  ctrl.innerHTML=`<button class="bc" onclick="editBl('${rId}',${ci})"><i data-lucide="pencil" style="width:13px;height:13px;color:var(--text2)"></i></button><button class="bc del" onclick="delBl('${rId}',${ci})"><i data-lucide="trash-2" style="width:13px;height:13px;color:var(--red)"></i></button>`;
+  el.appendChild(ctrl);
+
+  if(bl.type==='text'){
+    const d=document.createElement('div');d.className='btxt';d.textContent=bl.content;el.appendChild(d);
+  } else if(bl.type==='image'){
+    const w=document.createElement('div');w.className='bimg';
+    const img=document.createElement('img');img.src=bl.data;img.alt=bl.caption||'';w.appendChild(img);el.appendChild(w);
+    if(bl.caption){const p=document.createElement('p');p.className='text-sm mt-2 text-center';p.style.color='var(--text2)';p.textContent=bl.caption;el.appendChild(p)}
+  } else if(bl.type==='pdf'){
+    const a=document.createElement('a');a.href=bl.data;a.download=bl.fileName||'doc.pdf';a.className='bpdf';
+    a.innerHTML=`<div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(255,152,0,.15)"><i data-lucide="file-text" style="width:22px;height:22px;color:var(--orange)"></i></div><div><div class="font-semibold text-sm">${esc(bl.label||bl.fileName||'PDF')}</div><div class="text-xs" style="color:var(--text2)">Herunterladen</div></div>`;
+    el.appendChild(a);
+  } else if(bl.type==='link'){
+    const a=document.createElement('a');a.href=bl.url;a.target='_blank';a.rel='noopener';a.className='blnk';
+    a.innerHTML=`<div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(76,175,80,.15)"><i data-lucide="external-link" style="width:22px;height:22px;color:var(--green)"></i></div><div><div class="font-semibold text-sm">${esc(bl.label||bl.url)}</div><div class="text-xs truncate" style="color:var(--text2);max-width:280px">${esc(bl.url)}</div></div>`;
+    el.appendChild(a);
+  } else if(bl.type==='audio'){
+    const w=document.createElement('div');w.className='baudio';
+    w.innerHTML=`<div class="baudio-label"><i data-lucide="music" style="width:18px;height:18px;color:var(--pink)"></i><span class="font-semibold text-sm">${esc(bl.label||'Audio')}</span></div>`;
+    const aud=document.createElement('audio');aud.controls=true;aud.src=bl.data;aud.style.width='100%';w.appendChild(aud);el.appendChild(w);
+  } else if(bl.type==='html'){
+    // ═══ KEY FIX: create iframe via DOM, set srcdoc directly ═══
+    const wrap=document.createElement('div');wrap.className='bhtml-wrap';
+    const lbl=document.createElement('div');lbl.className='bhtml-label';
+    lbl.innerHTML=`<i data-lucide="code" style="width:14px;height:14px"></i> HTML-Block`;
+    wrap.appendChild(lbl);
+    const fr=document.createElement('iframe');
+    fr.className='bhtml-frame';
+    fr.style.height=(bl.height||400)+'px';
+    // NO sandbox restriction — allows full interactivity (clicks, JS, forms)
+    fr.setAttribute('allow','fullscreen');
+    // srcdoc set directly via property — no escaping issues
+    fr.srcdoc=bl.code||'';
+    wrap.appendChild(fr);
+    el.appendChild(wrap);
+  } else if(bl.type==='iframe'){
+    const wrap=document.createElement('div');wrap.className='biframe-wrap';
+    const lbl=document.createElement('div');lbl.className='biframe-label';
+    lbl.innerHTML=`<i data-lucide="globe" style="width:14px;height:14px"></i> ${esc(bl.label||'Eingebetteter Inhalt')}`;
+    wrap.appendChild(lbl);
+    const fr=document.createElement('iframe');fr.className='biframe-frame';fr.src=bl.url;
+    fr.style.height=(bl.height||400)+'px';
+    fr.setAttribute('allow','accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture;fullscreen');
+    fr.allowFullscreen=true;
+    wrap.appendChild(fr);el.appendChild(wrap);
+  }
+  return el;
+}
+
+function navTo(id){curPg=id;renderSb();renderPg();document.getElementById('sb').classList.remove('open');document.getElementById('sbb').classList.remove('act')}
+
+// ═══ EDIT MODE ═══
+function fabClick(){isEd?exitEd():openPw()}
+function enterEd(){isEd=true;document.body.classList.add('editing');document.getElementById('fab').classList.add('on');document.getElementById('fabi').setAttribute('data-lucide','check');lucide.createIcons();renderSb();renderPg();toast('Bearbeitungsmodus aktiv')}
+function exitEd(){isEd=false;document.body.classList.remove('editing');document.getElementById('fab').classList.remove('on');document.getElementById('fabi').setAttribute('data-lucide','pencil');lucide.createIcons();renderSb();renderPg();toast('Bearbeitungsmodus beendet')}
+
+async function saveAndDownload(){
+  const d=D();
+  // Temporarily exit edit mode so the saved HTML opens in locked mode
+  const wasEditing=isEd;
+  if(wasEditing){
+    isEd=false;
+    document.body.classList.remove('editing');
+    document.getElementById('fab').classList.remove('on');
+    document.getElementById('fabi').setAttribute('data-lucide','pencil');
+    lucide.createIcons();
+    renderSb();
+    renderPg();
+  }
+  // Snapshot clean DOM
+  const docHtml=document.documentElement.outerHTML;
+  const m1='<!--DATA_EMBED_START-->',m2='<!--DATA_EMBED_END-->';
+  const i1=docHtml.indexOf(m1),i2=docHtml.indexOf(m2);
+  if(i1===-1||i2===-1){toast('Fehler beim Speichern');return}
+  const newHtml='<!doctype html>\n<html lang="de" class="h-full">\n'
+    +docHtml.substring(docHtml.indexOf('<head>'),i1+m1.length)
+    +'\n<script id="embedded-data" type="application/json">'+JSON.stringify(d)+'<\/script>\n'
+    +docHtml.substring(i2)
+    +'\n</html>';
+  const blob=new Blob([newHtml],{type:'text/html;charset=utf-8'});
+  const file=new File([blob],'biobox.html',{type:'text/html'});
+
+  // Restore edit mode first so UI is responsive during download
+  if(wasEditing){
+    isEd=true;
+    document.body.classList.add('editing');
+    document.getElementById('fab').classList.add('on');
+    document.getElementById('fabi').setAttribute('data-lucide','check');
+    lucide.createIcons();
+    renderSb();
+    renderPg();
+  }
+
+  // Try Web Share API (works great on mobile)
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({files:[file],title:'BioBox',text:'BioBox Seitenmanager'});
+      toast('Gespeichert!');
+      return;
+    }catch(e){if(e.name!=='AbortError')console.log('Share failed, trying fallback')}
+  }
+
+  // Fallback: create a visible download link in a modal
+  const url=URL.createObjectURL(blob);
+  const dlModal=document.getElementById('dlM');
+  const dlLink=document.getElementById('dlLink');
+  dlLink.href=url;
+  dlLink.download='biobox.html';
+  dlModal.classList.add('act');
+  lucide.createIcons();
+
+  // Also try programmatic click (works on desktop)
+  const a=document.createElement('a');
+  a.href=url;a.download='biobox.html';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+
+  // Clean up URL after a delay
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  toast('Gespeichert!');
+}
+
+// ═══ PW ═══
+function openPw(){document.getElementById('pwI').value='';document.getElementById('pwErr').classList.add('hidden');document.getElementById('pwM').classList.add('act');setTimeout(()=>document.getElementById('pwI').focus(),200);lucide.createIcons()}
+function closePw(){document.getElementById('pwM').classList.remove('act')}
+function togPwV(){const i=document.getElementById('pwI'),p=i.type==='password';i.type=p?'text':'password';document.getElementById('pwE').setAttribute('data-lucide',p?'eye-off':'eye');lucide.createIcons()}
+function chkPw(){const i=document.getElementById('pwI');if(i.value===PW){closePw();enterEd()}else{document.getElementById('pwErr').classList.remove('hidden');i.classList.add('shake');setTimeout(()=>i.classList.remove('shake'),400);i.value='';i.focus()}}
+
+// ═══ PAGE ═══
+function openPageM(){edPgId=null;document.getElementById('pgMt').textContent='Neue Seite';document.getElementById('pgE').value='📄';document.getElementById('pgN').value='';document.getElementById('pgD').value='';document.getElementById('pgM').classList.add('act');setTimeout(()=>document.getElementById('pgN').focus(),200);lucide.createIcons()}
+function openEditPgM(id){const d=D(),pg=d.pages.find(p=>p.id===id);if(!pg)return;edPgId=id;document.getElementById('pgMt').textContent='Seite bearbeiten';document.getElementById('pgE').value=pg.emoji||'📄';document.getElementById('pgN').value=pg.name;document.getElementById('pgD').value=pg.desc||'';document.getElementById('pgM').classList.add('act');lucide.createIcons()}
+function closePgM(){document.getElementById('pgM').classList.remove('act')}
+function savePg(){const em=document.getElementById('pgE').value.trim()||'📄',nm=document.getElementById('pgN').value.trim(),ds=document.getElementById('pgD').value.trim();if(!nm){toast('Name eingeben');return}const d=D();if(edPgId){const pg=d.pages.find(p=>p.id===edPgId);if(pg){pg.emoji=em;pg.name=nm;pg.desc=ds}}else{const np={id:gid(),emoji:em,name:nm,desc:ds,rows:[]};d.pages.push(np);curPg=np.id}saveData(d);closePgM();renderSb();renderPg();toast(edPgId?'Aktualisiert':'Erstellt')}
+function delPg(id){if(!confirm('Seite löschen?'))return;const d=D();d.pages=d.pages.filter(p=>p.id!==id);if(curPg===id)curPg=d.pages.length?d.pages[0].id:null;saveData(d);renderSb();if(curPg)renderPg();toast('Gelöscht')}
+
+// ═══ ROW ═══
+function addRow(type){addBlType=type;edBlId=null;edRowId=null;edColIdx=null;resetTmp();const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;const nr=gid();pg.rows.push({id:nr,cols:1,blocks:[]});saveData(d);edRowId=nr;edColIdx=0;openBlModal(type)}
+function addBlToRow(rId){const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;const row=pg.rows.find(r=>r.id===rId);if(!row)return;let ci=-1;for(let i=0;i<row.cols;i++){if(!row.blocks[i]){ci=i;break}}if(ci===-1){if(row.cols<4){row.cols++;ci=row.cols-1;saveData(d)}else{toast('Max 4 Spalten');return}}edRowId=rId;edColIdx=ci;openTcM()}
+function addBlToRowCol(rId,ci){edRowId=rId;edColIdx=ci;openTcM()}
+function delRow(rId){if(!confirm('Zeile löschen?'))return;const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;pg.rows=pg.rows.filter(r=>r.id!==rId);saveData(d);renderPg();toast('Gelöscht')}
+
+// ═══ TYPE CHOOSER ═══
+function openTcM(){addBlType=null;edBlId=null;resetTmp();document.getElementById('tcM').classList.add('act');lucide.createIcons()}
+function closeTcM(){document.getElementById('tcM').classList.remove('act')}
+function pickType(t){closeTcM();addBlType=t;openBlModal(t)}
+
+// ═══ BLOCK MODAL ═══
+function resetTmp(){tmpImg=null;tmpPdf=null;tmpPdfN=null;tmpAudio=null;tmpAudioN=null}
+function openBlModal(type){
+  document.getElementById('blMt').textContent=edBlId?'Block bearbeiten':TN[type]+' hinzufügen';
+  TYPES.forEach(t=>document.getElementById('bf-'+t).classList.add('hidden'));
+  document.getElementById('bf-'+type).classList.remove('hidden');
+  document.getElementById('blTxt').value='';
+  document.getElementById('blImgC').value='';document.getElementById('blImgP').classList.add('hidden');document.getElementById('blImgZ').classList.remove('hidden');
+  document.getElementById('blPdfI').classList.add('hidden');document.getElementById('blPdfZ').classList.remove('hidden');document.getElementById('blPdfL').value='';
+  document.getElementById('blLnkU').value='';document.getElementById('blLnkL').value='';
+  document.getElementById('blAudioP').classList.add('hidden');document.getElementById('blAudioL').value='';resetRecUI();
+  document.getElementById('blHtmlCode').value='';document.getElementById('blHtmlH').value='400';
+  document.getElementById('blIframeU').value='';document.getElementById('blIframeH').value='400';document.getElementById('blIframeL').value='';
+  document.getElementById('blM').classList.add('act');lucide.createIcons();
+}
+function editBl(rId,ci){
+  const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;const row=pg.rows.find(r=>r.id===rId);if(!row)return;const bl=row.blocks[ci];if(!bl)return;
+  edRowId=rId;edColIdx=ci;edBlId=bl.id;addBlType=bl.type;resetTmp();
+  document.getElementById('blMt').textContent='Block bearbeiten';
+  TYPES.forEach(t=>document.getElementById('bf-'+t).classList.add('hidden'));
+  document.getElementById('bf-'+bl.type).classList.remove('hidden');
+  if(bl.type==='text')document.getElementById('blTxt').value=bl.content||'';
+  else if(bl.type==='image'){tmpImg=bl.data;document.getElementById('blImgC').value=bl.caption||'';document.getElementById('blImgZ').classList.add('hidden');document.getElementById('blImgP').classList.remove('hidden');document.getElementById('blImgPI').src=bl.data}
+  else if(bl.type==='pdf'){tmpPdf=bl.data;tmpPdfN=bl.fileName;document.getElementById('blPdfZ').classList.add('hidden');document.getElementById('blPdfI').classList.remove('hidden');document.getElementById('blPdfN').textContent=bl.fileName||'PDF';document.getElementById('blPdfL').value=bl.label||''}
+  else if(bl.type==='link'){document.getElementById('blLnkU').value=bl.url||'';document.getElementById('blLnkL').value=bl.label||''}
+  else if(bl.type==='audio'){tmpAudio=bl.data;tmpAudioN=bl.label||'Audio';document.getElementById('blAudioP').classList.remove('hidden');document.getElementById('blAudioN').textContent=tmpAudioN;document.getElementById('blAudioPrev').src=bl.data;document.getElementById('blAudioL').value=bl.label||''}
+  else if(bl.type==='html'){document.getElementById('blHtmlCode').value=bl.code||'';document.getElementById('blHtmlH').value=bl.height||400}
+  else if(bl.type==='iframe'){document.getElementById('blIframeU').value=bl.url||'';document.getElementById('blIframeH').value=bl.height||400;document.getElementById('blIframeL').value=bl.label||''}
+  document.getElementById('blM').classList.add('act');lucide.createIcons();
+}
+function closeBlM(){document.getElementById('blM').classList.remove('act');stopRecIfActive()}
+
+function saveBl(){
+  const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;const row=pg.rows.find(r=>r.id===edRowId);if(!row)return;
+  let bl=edBlId?row.blocks[edColIdx]:null;const t=addBlType;
+  if(t==='text'){const v=document.getElementById('blTxt').value.trim();if(!v){toast('Text eingeben');return}if(bl)bl.content=v;else row.blocks[edColIdx]={id:gid(),type:'text',content:v}}
+  else if(t==='image'){if(!tmpImg){toast('Bild wählen');return}const cap=document.getElementById('blImgC').value.trim();if(bl){bl.data=tmpImg;bl.caption=cap}else row.blocks[edColIdx]={id:gid(),type:'image',data:tmpImg,caption:cap}}
+  else if(t==='pdf'){if(!tmpPdf){toast('PDF wählen');return}const lb=document.getElementById('blPdfL').value.trim();if(bl){bl.data=tmpPdf;bl.fileName=tmpPdfN;bl.label=lb}else row.blocks[edColIdx]={id:gid(),type:'pdf',data:tmpPdf,fileName:tmpPdfN,label:lb}}
+  else if(t==='link'){let u=document.getElementById('blLnkU').value.trim();const lb=document.getElementById('blLnkL').value.trim();if(!u){toast('URL eingeben');return}if(!u.startsWith('http'))u='https://'+u;if(bl){bl.url=u;bl.label=lb}else row.blocks[edColIdx]={id:gid(),type:'link',url:u,label:lb}}
+  else if(t==='audio'){if(!tmpAudio){toast('Audio aufnehmen/hochladen');return}const lb=document.getElementById('blAudioL').value.trim();if(bl){bl.data=tmpAudio;bl.label=lb}else row.blocks[edColIdx]={id:gid(),type:'audio',data:tmpAudio,label:lb}}
+  else if(t==='html'){const code=document.getElementById('blHtmlCode').value;if(!code.trim()){toast('HTML eingeben');return}const h=parseInt(document.getElementById('blHtmlH').value)||400;if(bl){bl.code=code;bl.height=h}else row.blocks[edColIdx]={id:gid(),type:'html',code:code,height:h}}
+  else if(t==='iframe'){let u=document.getElementById('blIframeU').value.trim();if(!u){toast('URL eingeben');return}if(!u.startsWith('http'))u='https://'+u;const h=parseInt(document.getElementById('blIframeH').value)||400;const lb=document.getElementById('blIframeL').value.trim();if(bl){bl.url=u;bl.height=h;bl.label=lb}else row.blocks[edColIdx]={id:gid(),type:'iframe',url:u,height:h,label:lb}}
+  saveData(d);closeBlM();renderPg();toast(edBlId?'Aktualisiert':'Hinzugefügt');
+}
+function delBl(rId,ci){if(!confirm('Block löschen?'))return;const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;const row=pg.rows.find(r=>r.id===rId);if(!row)return;row.blocks[ci]=null;if(row.blocks.every(b=>!b))pg.rows=pg.rows.filter(r=>r.id!==rId);saveData(d);renderPg();toast('Gelöscht')}
+
+// ═══ AUDIO ═══
+function resetRecUI(){document.getElementById('recTimer').textContent='00:00';document.getElementById('recStartBtn').classList.remove('hidden');document.getElementById('recStopBtn').classList.add('hidden');recSecs=0}
+function stopRecIfActive(){if(mediaRec&&mediaRec.state==='recording')mediaRec.stop();if(recInterval)clearInterval(recInterval)}
+async function startRec(){try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});recChunks=[];recSecs=0;
+  mediaRec=new MediaRecorder(stream,{mimeType:MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm'});
+  mediaRec.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data)};
+  mediaRec.onstop=()=>{stream.getTracks().forEach(t=>t.stop());const blob=new Blob(recChunks,{type:'audio/webm'});const r=new FileReader();r.onload=ev=>{tmpAudio=ev.target.result;tmpAudioN='Aufnahme';document.getElementById('blAudioP').classList.remove('hidden');document.getElementById('blAudioN').textContent='Aufnahme ('+fmtT(recSecs)+')';document.getElementById('blAudioPrev').src=tmpAudio;lucide.createIcons()};r.readAsDataURL(blob)};
+  mediaRec.start();document.getElementById('recStartBtn').classList.add('hidden');document.getElementById('recStopBtn').classList.remove('hidden');
+  recInterval=setInterval(()=>{recSecs++;document.getElementById('recTimer').textContent=fmtT(recSecs)},1000);
+}catch(e){toast('Mikrofon nicht verfügbar')}}
+function stopRec(){if(mediaRec&&mediaRec.state==='recording')mediaRec.stop();if(recInterval){clearInterval(recInterval);recInterval=null}resetRecUI()}
+function fmtT(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function hAudioFile(e){const f=e.target.files[0];if(!f)return;if(f.size>10*1024*1024){toast('Max 10 MB');return}const r=new FileReader();r.onload=ev=>{tmpAudio=ev.target.result;tmpAudioN=f.name;document.getElementById('blAudioP').classList.remove('hidden');document.getElementById('blAudioN').textContent=f.name;document.getElementById('blAudioPrev').src=tmpAudio;lucide.createIcons()};r.readAsDataURL(f)}
+
+// ═══ IMG/PDF ═══
+function hImgU(e){const f=e.target.files[0];if(f&&f.type.startsWith('image/'))procImg(f)}
+function procImg(f){if(f.size>5*1024*1024){toast('Max 5 MB');return}const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const mx=1200;let w=img.width,h=img.height;if(w>mx){h=Math.round(h*mx/w);w=mx}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);tmpImg=c.toDataURL('image/jpeg',.8);document.getElementById('blImgZ').classList.add('hidden');document.getElementById('blImgP').classList.remove('hidden');document.getElementById('blImgPI').src=tmpImg};img.src=e.target.result};r.readAsDataURL(f)}
+function hPdfU(e){const f=e.target.files[0];if(!f)return;if(f.size>5*1024*1024){toast('Max 5 MB');return}const r=new FileReader();r.onload=ev=>{tmpPdf=ev.target.result;tmpPdfN=f.name;document.getElementById('blPdfZ').classList.add('hidden');document.getElementById('blPdfI').classList.remove('hidden');document.getElementById('blPdfN').textContent=f.name;lucide.createIcons()};r.readAsDataURL(f)}
+(function(){const iz=document.getElementById('blImgZ');iz.addEventListener('dragover',e=>{e.preventDefault();iz.classList.add('dov')});iz.addEventListener('dragleave',()=>iz.classList.remove('dov'));iz.addEventListener('drop',e=>{e.preventDefault();iz.classList.remove('dov');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))procImg(f)});
+const pz=document.getElementById('blPdfZ');pz.addEventListener('dragover',e=>{e.preventDefault();pz.classList.add('dov')});pz.addEventListener('dragleave',()=>pz.classList.remove('dov'));pz.addEventListener('drop',e=>{e.preventDefault();pz.classList.remove('dov');const f=e.dataTransfer.files[0];if(f)hPdfU({target:{files:[f]}})})})();
+
+// ═══ LAYOUT ═══
+function openLayM(rId){layRowId=rId;const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;const row=pg.rows.find(r=>r.id===rId);if(!row)return;layNewCols=row.cols||1;renderCS();document.getElementById('layM').classList.add('act');lucide.createIcons()}
+function closeLayM(){document.getElementById('layM').classList.remove('act')}
+function renderCS(){const c=document.getElementById('layColSel');c.innerHTML='';for(let n=1;n<=4;n++){const b=document.createElement('button');b.className='col-btn'+(layNewCols===n?' act':'');b.onclick=()=>{layNewCols=n;renderCS()};let bars='';for(let i=0;i<n;i++)bars+=`<div class="col-bar" style="flex:1"></div>`;b.innerHTML=bars;c.appendChild(b)}}
+function saveLay(){const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;const row=pg.rows.find(r=>r.id===layRowId);if(!row)return;row.cols=layNewCols;if(layNewCols<(row.blocks||[]).length)row.blocks=row.blocks.slice(0,layNewCols);while(row.blocks.length<layNewCols)row.blocks.push(null);saveData(d);closeLayM();renderPg();toast('Layout geändert')}
+
+// ═══ ROW DND ═══
+let dRI=null;
+function rDS(e){if(!isEd)return;dRI=e.currentTarget.dataset.rowId;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
+function rDE(e){dRI=null;e.currentTarget.classList.remove('dragging');document.querySelectorAll('.row-wrap').forEach(r=>r.classList.remove('drag-top','drag-bot'))}
+function rDO(e){e.preventDefault();const el=e.currentTarget;if(el.dataset.rowId===dRI)return;const r=el.getBoundingClientRect(),m=r.top+r.height/2;el.classList.remove('drag-top','drag-bot');el.classList.add(e.clientY<m?'drag-top':'drag-bot')}
+function rDL(e){e.currentTarget.classList.remove('drag-top','drag-bot')}
+function rDR(e){e.preventDefault();const tE=e.currentTarget,tId=tE.dataset.rowId;if(!dRI||dRI===tId)return;const r=tE.getBoundingClientRect(),bef=e.clientY<r.top+r.height/2;const d=D(),pg=d.pages.find(p=>p.id===curPg);if(!pg)return;const fi=pg.rows.findIndex(r=>r.id===dRI);const[mv]=pg.rows.splice(fi,1);let ti=pg.rows.findIndex(r=>r.id===tId);if(!bef)ti++;pg.rows.splice(ti,0,mv);saveData(d);renderPg()}
+
+// ═══ UTILS ═══
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
+function closeDlM(){document.getElementById('dlM').classList.remove('act')}
+function toggleSb(){document.getElementById('sb').classList.toggle('open');document.getElementById('sbb').classList.toggle('act')}
+
+// ═══ INIT ═══
+(function(){const d=D();if(d.pages.length)curPg=d.pages[0].id;renderSb();if(curPg)renderPg();lucide.createIcons()})();
+</script>
+</body>
+</html>
